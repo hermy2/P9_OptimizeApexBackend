@@ -1,28 +1,24 @@
-global class Batch01AccountChiffreAffaire implements Database.Batchable<sObject>{
+global class Batch01AccountChiffreAffaire implements Database.Batchable<sObject> {
     
-   global Database.QueryLocator start(Database.BatchableContext info){ 
-       //Requeter seulement les comptes qui ont au moins une commande avec le Status 'Ordered'
-       return Database.getQueryLocator('SELECT Id FROM Account');
-
-   }
-    
-   global void execute(Database.BatchableContext info, List<Account> scope){      
-       list<Order> listOrders = [SELECT Id, TotalAmount, AccountId FROM Order];
-       
-		for(integer i=0; i < scope.size(); i++){
-			Account myAccount = scope[i];
-			myAccount.Chiffre_d_affaire__c = 0;
-           for(integer j=0; j < listOrders.size(); j++){
-               if(listOrders[j].AccountId == myAccount.Id){
-                   myAccount.Chiffre_d_affaire__c = myAccount.Chiffre_d_affaire__c + listOrders[j].TotalAmount;
-               }                   
-           }
-       }
-       
-       update scope;
-   }    
-    
-   global void finish(Database.BatchableContext info){     
+    global Database.QueryLocator start(Database.BatchableContext bc){ 
+        //Requeter seulement les comptes qui ont au moins une commande avec le Status 'Ordered'
+        
+        return Database.getQueryLocator('SELECT Id,Chiffre_d_affaire__c,(SELECT Id,TotalAmount FROM Orders WHERE Status = \'Activated\') FROM Account');
+        //return Database.getQueryLocator('SELECT AccountId FROM Order WHERE Status = \'Activated\'');
+        //return Database.getQueryLocator([SELECT AccountId, SUM(TotalAmount)amt FROM Order WHERE Status = 'Activated' GROUP BY AccountId]);
+    }
+   
+    global void execute(Database.BatchableContext bc, List<Account> scope) {
+        Set<Id> accountToUpdate = new Set<Id>();
+        
+        for(Account acc : scope){
+            accountToUpdate.add(acc.id);
+        }
+        
+        AccountManager.updateCA(accountToUpdate);
+    }
+	
+    global void finish(Database.BatchableContext info){     
        
    } 
 }
